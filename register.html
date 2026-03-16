@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Create Account</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.container{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px gray;
+text-align:center;
+}
+
+.box{
+display:block;
+width:250px;
+padding:10px;
+margin:10px 0;
+border:1px solid gray;
+border-radius:5px;
+}
+
+button{
+width:270px;
+padding:10px;
+background:blue;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Create Account</h2>
+
+<input class="box" id="newuser" placeholder="Username">
+<input class="box" id="newpass" type="password" placeholder="Password">
+
+<button onclick="register()">Register</button>
+
+</div>
+
+<script>
+
+function register(){
+
+let user=document.getElementById("newuser").value;
+let pass=document.getElementById("newpass").value;
+
+localStorage.setItem("username",user);
+localStorage.setItem("password",pass);
+
+alert("Account Created");
+
+window.location="login.html";
+
+}
+
+</script>
+
+</body>
+</html>
