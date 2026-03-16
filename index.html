@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Education Learning Tracker</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PDF LIBRARY -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+height:100vh;
+background:linear-gradient(135deg,#b8f1c6,#d4fc79);
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.container{
+background:white;
+padding:25px;
+border-radius:10px;
+box-shadow:0 0 10px gray;
+width:420px;
+text-align:center;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+margin-bottom:10px;
+}
+
+.logout{
+background:red;
+color:white;
+border:none;
+padding:6px 12px;
+border-radius:5px;
+cursor:pointer;
+}
+
+.title{
+font-size:24px;
+font-weight:bold;
+margin-bottom:15px;
+background:linear-gradient(90deg,#00c6ff,#0072ff);
+-webkit-background-clip:text;
+color:transparent;
+}
+
+input{
+width:100%;
+padding:8px;
+margin:6px 0;
+border-radius:5px;
+border:1px solid gray;
+}
+
+.addbtn{
+width:100%;
+padding:10px;
+background:green;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+margin-top:5px;
+}
+
+.downloadbtn{
+width:100%;
+padding:10px;
+background:#007BFF;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+margin-top:10px;
+}
+
+.record{
+background:#f3f3f3;
+padding:8px;
+margin-top:6px;
+border-radius:5px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+font-size:14px;
+}
+
+canvas{
+margin-top:20px;
+}
+
+.guidanceBox{
+margin-top:15px;
+background:#eef;
+padding:10px;
+border-radius:6px;
+font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="topbar">
+<h3>Welcome</h3>
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="title">Smart Education Learning Tracker</div>
+
+<input id="name" placeholder="Student Name">
+<input id="subject" placeholder="Subject">
+<input id="hours" placeholder="Study Hours">
+<input id="marks" placeholder="Marks">
+
+<button class="addbtn" onclick="addRecord()">Add Record</button>
+
+<input id="search" placeholder="Search Student" onkeyup="searchRecord()">
+
+<h3>Study Records</h3>
+
+<div id="records"></div>
+
+<canvas id="marksChart"></canvas>
+
+<button class="downloadbtn" onclick="downloadReport()">Download PDF Report</button>
+
+<h3>Learning Guidance</h3>
+<div id="guidance" class="guidanceBox"></div>
+
+</div>
+
+<script>
+
+function logout(){
+window.location="login.html";
+}
+
+async function addRecord(){
+
+let name=document.getElementById("name").value;
+let subject=document.getElementById("subject").value;
+let hours=document.getElementById("hours").value;
+let marks=document.getElementById("marks").value;
+
+if(name==""||subject==""||hours==""||marks==""){
+alert("Fill all fields");
+return;
+}
+
+let record={name,subject,hours,marks};
+
+/* SAVE TO BACKEND */
+
+fetch("http://localhost:5000/addRecord",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify(record)
+});
+
+/* SAVE TO LOCAL */
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+records.push(record);
+
+localStorage.setItem("records",JSON.stringify(records));
+
+generateGuidance();
+displayRecords();
+updateChart();
+clearInputs();
+
+}
+
+function displayRecords(){
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+
+let output="";
+
+for(let i=0;i<records.length;i++){
+
+output+=`
+<div class="record">
+<span>
+${records[i].name} | ${records[i].subject} | ${records[i].hours}h | ${records[i].marks}
+</span>
+</div>
+`;
+
+}
+
+document.getElementById("records").innerHTML=output;
+
+}
+
+function clearInputs(){
+document.getElementById("name").value="";
+document.getElementById("subject").value="";
+document.getElementById("hours").value="";
+document.getElementById("marks").value="";
+}
+
+function searchRecord(){
+
+let search=document.getElementById("search").value.toLowerCase();
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+
+let output="";
+
+for(let i=0;i<records.length;i++){
+
+if(records[i].name.toLowerCase().includes(search)){
+
+output+=`
+<div class="record">
+<span>
+${records[i].name} | ${records[i].subject} | ${records[i].hours}h | ${records[i].marks}
+</span>
+</div>
+`;
+
+}
+
+}
+
+document.getElementById("records").innerHTML=output;
+
+}
+
+let chart;
+
+function updateChart(){
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+
+let names=[];
+let marks=[];
+
+for(let i=0;i<records.length;i++){
+names.push(records[i].name);
+marks.push(records[i].marks);
+}
+
+let ctx=document.getElementById("marksChart");
+
+if(chart){
+chart.destroy();
+}
+
+chart=new Chart(ctx,{
+type:'bar',
+data:{
+labels:names,
+datasets:[{
+label:'Marks',
+data:marks
+}]
+}
+});
+
+}
+
+/* LEARNING GUIDANCE */
+
+function generateGuidance(){
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+
+if(records.length==0){
+document.getElementById("guidance").innerHTML="";
+return;
+}
+
+let total=0;
+let highest=0;
+let lowest=100;
+
+for(let i=0;i<records.length;i++){
+
+let m=parseInt(records[i].marks);
+
+total+=m;
+
+if(m>highest) highest=m;
+if(m<lowest) lowest=m;
+
+}
+
+let avg=Math.round(total/records.length);
+
+let message="";
+
+if(avg>=80){
+message="Excellent performance! Keep practicing.";
+}
+else if(avg>=60){
+message="Good progress. Revise concepts.";
+}
+else{
+message="Need improvement. Increase study hours.";
+}
+
+document.getElementById("guidance").innerHTML=
+"Average Marks: "+avg+
+"<br>Highest Marks: "+highest+
+"<br>Lowest Marks: "+lowest+
+"<br><br>"+message;
+
+}
+
+/* DOWNLOAD PDF */
+
+function downloadReport(){
+
+const { jsPDF } = window.jspdf;
+
+let doc=new jsPDF();
+
+let records=JSON.parse(localStorage.getItem("records")) || [];
+
+let y=10;
+
+doc.text("Student Study Report",10,y);
+
+y+=10;
+
+for(let i=0;i<records.length;i++){
+
+doc.text(
+records[i].name+" | "+
+records[i].subject+" | "+
+records[i].hours+"h | "+
+records[i].marks,
+10,y
+);
+
+y+=10;
+
+}
+
+doc.save("study_report.pdf");
+
+}
+
+displayRecords();
+updateChart();
+generateGuidance();
+
+</script>
+
+</body>
+</html>
