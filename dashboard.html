@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Learning Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+:root{
+--bg: linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);
+--card: rgba(255,255,255,0.08);
+--text: white;
+--sidebar: #020617;
+--accent: #38bdf8;
+}
+
+.light{
+--bg: linear-gradient(135deg,#f0f9ff,#e0f2fe,#bae6fd);
+--card: rgba(0,0,0,0.05);
+--text: black;
+--sidebar: #e2e8f0;
+--accent: #2563eb;
+}
+
+body{
+margin:0;
+font-family:Segoe UI;
+display:flex;
+background:var(--bg);
+color:var(--text);
+}
+
+.toggle{
+position:absolute;
+top:10px;
+right:20px;
+background:white;
+color:black;
+padding:8px;
+border-radius:50%;
+cursor:pointer;
+}
+
+.sidebar{
+width:230px;
+background:var(--sidebar);
+padding:20px;
+height:100vh;
+}
+
+.menu{list-style:none;padding:0;}
+
+.menu li{
+padding:12px;
+margin:6px 0;
+cursor:pointer;
+border-radius:6px;
+}
+
+.menu li.active{
+background:var(--accent);
+color:black;
+}
+
+.main{
+flex:1;
+padding:20px;
+}
+
+.card{
+background:var(--card);
+padding:18px;
+border-radius:12px;
+margin-bottom:15px;
+opacity:0;
+transform:translateY(20px);
+transition:0.4s;
+}
+
+.card.show{
+opacity:1;
+transform:translateY(0);
+}
+
+.section{display:none;}
+.activeSection{display:block;}
+
+h3{color:var(--accent);}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="toggle" onclick="toggleTheme()">🌙</div>
+
+<div class="sidebar">
+<h2>📘 Dashboard</h2>
+
+<ul class="menu">
+<li onclick="showSection(event,'profile')" class="active">👤 Profile</li>
+<li onclick="showSection(event,'chart')">📊 Chart</li>
+<li onclick="showSection(event,'feedback')">💡 Feedback</li>
+<li onclick="showSection(event,'suggestion')">🧠 Suggestions</li>
+<li onclick="showSection(event,'summary')">📈 Summary</li>
+<li onclick="showSection(event,'daily')">📅 Daily</li>
+<li onclick="showSection(event,'weekly')">🗓 Weekly</li>
+<li onclick="showSection(event,'progress')">📊 Progress</li>
+<li onclick="showSection(event,'settings')">⚙️ Settings</li>
+</ul>
+</div>
+
+<div class="main">
+
+<div id="profile" class="card section activeSection show">
+<h3>Profile</h3>
+
+<input id="pname" placeholder="Name">
+<input id="pemail" placeholder="Email">
+<input id="pcourse" placeholder="Course">
+
+<button onclick="saveProfile()">Save / Update</button>
+<p id="profileDisplay"></p>
+</div>
+
+<div id="chart" class="card section">
+<h3>Marks Chart</h3>
+<canvas id="chartCanvas"></canvas>
+</div>
+
+<div id="feedback" class="card section"></div>
+<div id="suggestion" class="card section"></div>
+<div id="summary" class="card section"></div>
+<div id="daily" class="card section"></div>
+<div id="weekly" class="card section"></div>
+<div id="progress" class="card section"></div>
+
+<div id="settings" class="card section">
+<h3>Settings</h3>
+<button onclick="clearData()">Clear All Data</button>
+</div>
+
+</div>
+
+<script>
+
+let records = [];
+let chartInstance = null;
+
+/* FETCH DATA */
+async function loadData(){
+try{
+let res = await fetch("http://localhost:5000/getRecords");
+records = await res.json();
+console.log(records); // DEBUG
+initDashboard();
+}catch{
+alert("Backend not running ❌");
+}
+}
+
+loadData();
+
+/* DASHBOARD LOGIC */
+function initDashboard(){
+
+if(records.length === 0){
+document.getElementById("summary").innerHTML="<h3>No Data Available</h3>";
+return;
+}
+
+/* FEEDBACK */
+let fb="<h3>Feedback</h3>";
+records.forEach(r=>{
+let m=parseInt(r.marks);
+let msg=m>=80?"Excellent ⭐":m>=60?"Good 👍":m>=40?"Average 😐":"Needs Improvement ❗";
+fb+=r.subject+" → "+msg+"<br>";
+});
+document.getElementById("feedback").innerHTML=fb;
+
+/* SUGGESTION */
+let sug="<h3>Suggestions</h3>";
+records.forEach(r=>{
+let m=parseInt(r.marks);
+let msg=m>=80?"Advanced learning":m>=60?"Revise concepts":m>=40?"Practice more":"Focus basics";
+sug+=r.subject+" → "+msg+"<br>";
+});
+document.getElementById("suggestion").innerHTML=sug;
+
+/* SUMMARY */
+let total=0,low=100,weak="";
+records.forEach(r=>{
+let m=parseInt(r.marks);
+total+=m;
+if(m<low){low=m;weak=r.subject;}
+});
+let avg=Math.round(total/records.length);
+
+document.getElementById("summary").innerHTML=
+"<h3>Summary</h3>Average: "+avg+"<br>Weak Subject: "+weak;
+
+/* DAILY */
+let daily="<h3>Daily Plan</h3>";
+records.forEach(r=>{
+let m=parseInt(r.marks);
+let h=m<50?2:m<70?1.5:1;
+daily+=r.subject+" → "+h+" hrs<br>";
+});
+document.getElementById("daily").innerHTML=daily;
+
+/* WEEKLY */
+let days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+let wk="<h3>Weekly Plan</h3>";
+records.forEach(r=>{
+let m=parseInt(r.marks);
+let h=m<50?2:m<70?1.5:1;
+wk+=r.subject+": ";
+days.forEach(d=>wk+=d+"("+h+") ");
+wk+="<br>";
+});
+document.getElementById("weekly").innerHTML=wk;
+
+/* PROGRESS */
+let map={},prog="<h3>Progress</h3>";
+records.forEach(r=>{
+if(!map[r.subject]) map[r.subject]=[];
+map[r.subject].push(parseInt(r.marks));
+});
+for(let s in map){
+let arr=map[s];
+if(arr.length>=2){
+let status=arr[arr.length-1]>arr[0]?"Improved 📈":"Declined 📉";
+prog+=s+" → "+status+"<br>";
+}
+}
+document.getElementById("progress").innerHTML=prog;
+
+}
+
+/* CHART FIX */
+function renderChart(){
+
+let subjects=[],marks=[];
+records.forEach(r=>{
+subjects.push(r.subject);
+marks.push(parseInt(r.marks));
+});
+
+let ctx=document.getElementById("chartCanvas");
+
+if(chartInstance){
+chartInstance.destroy();
+}
+
+chartInstance=new Chart(ctx,{
+type:'bar',
+data:{
+labels:subjects,
+datasets:[{
+label:'Marks',
+data:marks,
+backgroundColor:'#38bdf8'
+}]
+}
+});
+}
+
+/* NAVIGATION */
+function showSection(e,id){
+
+document.querySelectorAll(".menu li").forEach(li=>li.classList.remove("active"));
+e.target.classList.add("active");
+
+document.querySelectorAll(".section").forEach(sec=>sec.classList.remove("activeSection"));
+
+let s=document.getElementById(id);
+s.classList.add("activeSection");
+
+setTimeout(()=>{
+s.classList.add("show");
+
+if(id==="chart"){
+renderChart();
+}
+
+},100);
+}
+
+/* THEME */
+function toggleTheme(){
+document.body.classList.toggle("light");
+localStorage.setItem("theme",
+document.body.classList.contains("light")?"light":"dark");
+}
+
+if(localStorage.getItem("theme")==="light"){
+document.body.classList.add("light");
+}
+
+/* PROFILE */
+function saveProfile(){
+let p={
+name:pname.value,
+email:pemail.value,
+course:pcourse.value
+};
+localStorage.setItem("profile",JSON.stringify(p));
+loadProfile();
+}
+
+function loadProfile(){
+let p=JSON.parse(localStorage.getItem("profile"));
+if(p){
+profileDisplay.innerHTML=
+"Name: "+p.name+"<br>Email: "+p.email+"<br>Course: "+p.course;
+
+pname.value=p.name;
+pemail.value=p.email;
+pcourse.value=p.course;
+}
+}
+loadProfile();
+
+/* SETTINGS */
+function clearData(){
+localStorage.clear();
+alert("All data cleared!");
+location.reload();
+}
+
+</script>
+
+</body>
+</html>
