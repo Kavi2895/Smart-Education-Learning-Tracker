@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>Add Record - Smart Education Tracker</title>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#00c6ff,#0072ff);
+}
+
+.container{
+background:white;
+padding:30px;
+border-radius:12px;
+box-shadow:0 5px 15px rgba(0,0,0,0.2);
+width:350px;
+text-align:center;
+}
+
+.title{
+font-size:22px;
+font-weight:bold;
+margin-bottom:15px;
+color:#0072ff;
+}
+
+input{
+width:100%;
+padding:10px;
+margin:8px 0;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:14px;
+}
+
+input:focus{
+outline:none;
+border-color:#0072ff;
+}
+
+button{
+width:100%;
+padding:10px;
+margin-top:10px;
+background:#0072ff;
+color:white;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+background:#005bb5;
+}
+
+.success{
+margin-top:10px;
+color:green;
+font-size:14px;
+}
+
+.viewBtn{
+background:#28a745;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="title">Add Study Record</div>
+
+<input id="name" placeholder="Student Name">
+<input id="subject" placeholder="Subject">
+<input id="hours" placeholder="Study Hours">
+<input id="marks" placeholder="Marks">
+
+<button onclick="addRecord()">Add Record</button>
+
+<button class="viewBtn" onclick="goDashboard()">Go to Dashboard</button>
+
+<div id="msg" class="success"></div>
+
+</div>
+
+<script>
+
+async function addRecord(){
+
+let name=document.getElementById("name").value;
+let subject=document.getElementById("subject").value;
+let hours=document.getElementById("hours").value;
+let marks=document.getElementById("marks").value;
+
+if(!name || !subject || !hours || !marks){
+alert("Please fill all fields");
+return;
+}
+
+try{
+
+await fetch("http://localhost:5000/addRecord",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({name,subject,hours,marks})
+});
+
+document.getElementById("msg").innerHTML="✅ Saved to Database";
+
+/* CLEAR INPUT */
+document.getElementById("name").value="";
+document.getElementById("subject").value="";
+document.getElementById("hours").value="";
+document.getElementById("marks").value="";
+
+/* REDIRECT AFTER 1 SECOND */
+setTimeout(()=>{
+window.location.href="dashboard.html";
+},1000);
+
+}catch(error){
+
+alert("❌ Backend not working");
+
+/* OPTIONAL REDIRECT */
+window.location.href="dashboard.html";
+
+}
+
+}
+
+/* GO TO DASHBOARD BUTTON */
+function goDashboard(){
+window.location.href="dashboard.html";
+}
+
+</script>
+
+</body>
+</html>
